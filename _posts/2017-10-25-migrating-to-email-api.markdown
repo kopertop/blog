@@ -20,9 +20,9 @@ tags:
 
 A few common use cases for the Auth0 Search API are:
 
-* Identify users by email address
-* Merge accounts together
-* Link existing accounts based on a shared email address
+* Identifying users by email address
+* Merging accounts together
+* Linking existing accounts based on a shared email address
 
 In the case of my company, [Cannabiz Media](https://cannabiz.media), we also used this API to identify new users and create accounts when a user signed up, de-duplicating by email address to prevent users from having multiple accounts.
 
