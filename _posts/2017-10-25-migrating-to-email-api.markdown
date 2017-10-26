@@ -10,12 +10,12 @@ author:
   mail: "kopertop@gmail.com"
   avatar: "https://en.gravatar.com/avatar/54d15d5d1700546270365e272098ca48?s=200"
 tags:
-- Email Lookup
-- Email Search
-- Search
+- email-lookup
+- email-search
+- search
 - API
-- Authentication Workflow
-- New Features
+- authentication-Workflow
+- new-features
 ---
 
 A few common use cases for the Auth0 Search API are:
