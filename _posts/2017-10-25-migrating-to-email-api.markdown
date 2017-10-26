@@ -1,26 +1,34 @@
 ---
 layout: post
-title: "Migrating to the new Email Search API"
-description: "If you use the Search API to map users by an email address, it's time to move to the new Email Search API"
+title: "Migrating to the new Auth0 Email Lookup API"
+description: "If you are using the Search API to map users by email addresses, it's time to move to the new Auth0 Email Lookup API"
 date: 2017-10-24 08:30
-category: Technical Guide, Email Search API
+category: Technical Guide, Email Lookup API, Search
 author:
   name: "Chris Moyer"
   url: "https://blog.coredumped.org
   mail: "kopertop@gmail.com"
   avatar: "https://en.gravatar.com/avatar/54d15d5d1700546270365e272098ca48?s=200"
 tags:
+- Email Lookup
 - Email Search
+- Search
 - API
 - Authentication Workflow
 - New Features
 ---
 
-One very common use case for the Auth0 Search API is to identify users by email address, merging accounts together, or linking existing accounts based on a shared email address. In the case of my company, Cannabiz Media, we also used this API to identify new users and create accounts when a user signed up, de-duplicating by email address to prevent users from having multiple accounts.
+A few common use cases for the Auth0 Search API are:
 
-## Introduction to the Search API
+* Identify users by email address
+* Merge accounts together
+* Link existing accounts based on a shared email address
 
-The search API is a generic API for searching Users, including with the ability to search for any generic metadata associated with a user's ```app_metadata``` or ```user_metadata```. This means if you had something like:
+In the case of my company, [Cannabiz Media](https://cannabiz.media), we also used this API to identify new users and create accounts when a user signed up, de-duplicating by email address to prevent users from having multiple accounts.
+
+## Search API Introduction
+
+The search API is a generic API for searching users that includes the ability to search for any generic metadata associated with a user's (`app_metadata` or `user_metadata`). For example, if you had something like:
 
 ```json
 "app_metadata": {
@@ -31,20 +39,20 @@ The search API is a generic API for searching Users, including with the ability 
 you could easily search for any users on the Trial plan by doing a search like:
 
 ```
-app_metdata.plan:Trial
+app_metadata.plan:Trial
 ```
 
-That's great for general searches, but it means that Auth0 has to store a lot of indexes, including a lot for things people never search for. In fact, most of the uses for the search API were just for looking up users by email. If you've ever set up a Search system, you know how ineficient it is to have unused indexes, and what kind of impact that has to search.
+That's great for general searches, but it means that Auth0 has to store a lot of indexes, including a lot of things people never search for. In fact, most of the uses for the search API were just for looking up users by email. If you've ever set up a search system, you know how ineficient it is to have unused indexes, and what kind of impact that has to search.
 
 ### Why using the Search API for authentication workflow is bad
 
-The search API isn't designed for high availability. Over the past week, I've noticed at least 3 occasions when it had issues (either complete outages, or just a partial outage). Your system is only as strong as it's weakest link, so if your login requires access to a system that's frequently unavailable, your entire system is effectively broken.
+The current Search API, while giving a lot of flexibility to developers, isn't ideal for high-availability systems. User data accessed via the Search API typically takes longer to return due to the nature of the system that gives us the flexibility to store and look up any type of data, so creating a dedicated endpoint for accessing user email information is a step in the right direction.
 
 ### Use-cases for mapping by email
 
-Auth0 allows you to have multiple identities (authentication mechanisms) for the same account. For example, you could set up a Database (username/password) account that also is connected to your Gmail login, no matter which login you use, you'll be connected to the same account.
+Auth0 allows you to have multiple identity providers (authentication mechanisms) for the same account. For example, you could set up an external database connection alongside Google social login and merge profiles by their email addresses. Like that, no which login mechanism users choose, they'll be connected to the same account.
 
-In fact, the recommended rule to [Link accounts by email address](https://github.com/auth0/rules/blob/master/rules/link-users-by-email.md) used the Search API to do this.
+In fact, the recommended rule to [Link accounts by email address](https://github.com/auth0/rules/blob/master/rules/link-users-by-email.md) previously used the Search API to do this.
 
 ```javascript
 function (user, context, callback) {
@@ -101,7 +109,7 @@ function (user, context, callback) {
 
 It's a common request, a user logs in with their Google account and they get migrated right into their normal account.
 
-### The Search API isn't designed for maximum availability
+### The Search API is designed for Flexibility
 
 The search system isn't designed for this kind of usage. It's designed for *flexibility*, not *availability*. Since most of the searches are just for looking up by email, Auth0 came up with a better solution. Enter the Email Lookup API.
 
@@ -109,9 +117,9 @@ The search system isn't designed for this kind of usage. It's designed for *flex
 
 The Email Lookup API doesn't use the search system, with it's thousands of different indexes. Instead, it uses a very simple index on the primary data store, the same DB that has had 99.99% uptime over the past 6 months. Using this API in your authentication workflow is completely safe.
 
-### What code to replace, and how to migrate from the Search API
+### Migrating to the Email Lookup API
 
-In order to make the migration, there's only a few lines in the original rule we need to replace. Instead of hitting ```/users```, we need to hit ```/users-by-email```:
+In order to make the migration, there's only a few lines in the original rule that we need to replace. Instead of hitting `/users`, we need to hit `/users-by-email`:
 
 ```javascript
    var userApiUrl = auth0.baseUrl + '/users';
@@ -127,7 +135,7 @@ In order to make the migration, there's only a few lines in the original rule we
   },
 ```
 
-Unlike with the search API, this API doesn't allow additional filters such as excluding the current user, so we also need to add a filter to our data:
+Unlike with the Search API, this API doesn't allow additional filters such as excluding the current user. Therefore, we also need to filter our data:
 
 ```javascript
       // Ignore the current user, if present
@@ -138,13 +146,13 @@ Unlike with the search API, this API doesn't allow additional filters such as ex
 
 Other than that, the data returned is identical so there's no problem with the remainder of our rule.
 
-### Limitations, things that it can not be used for
+### Email Lookup API Limitations
 
-As mentioned briefly above, there's no additional filters allowed via the ```users-by-email``` API, so any additional filtering needs to be done client-side. You also can't search for anything in the ```app_metadata```, so if you rely on rules to match things like by a ```customer_id``` or other ID outside of the email address, you'll still need to rely on the Search API. However, keep in mind that anything that relies on the Search API will not be available 99.99% of the time.
+As mentioned briefly above, there's no additional filters allowed via the `users-by-email` API, so any additional filtering needs to be done client-side. You also can't search for anything in the `app_metadata`, so if you rely on rules to match things like by a `customer_id` or other ID outside of the email address, you'll still need the Search API. However, keep in mind that anything that relies on the Search API won't be as available as the Email Lookup API.
 
-## How Cannabiz Media uses the new Email Lookup API
+## Cannabiz Media and the Email Lookup API
 
-Of course, linking users by email address is the most common use-case and essentially why this new API endpoint was created. However, there are other reasons to need to look up a user by email address. At my company, [Cannabiz Media](https://cannabiz.media), we use WooCommerce as our Storefront, which automatically creates user accounts in Auth0 when a user purchases a new subscription. A WooCommerce Webhook triggers an AWS Lambda function via API Gateway whenever a new subscription is purchased, updated, or cancelled. The payload looks similar to this:
+Of course, linking users by email address is the most common use-case and this is why the new API endpoint was created. However, there are other reasons where looking up users by email addresses is needed. At my company, [Cannabiz Media](https://cannabiz.media), we use WooCommerce as our Storefront, which automatically creates user accounts in Auth0 when a user purchases a new subscription. A WooCommerce Webhook triggers an AWS Lambda function via API Gateway whenever a new subscription is purchased, updated, or cancelled. The payload looks similar to this:
 
 ```json
 {
@@ -165,7 +173,7 @@ Of course, linking users by email address is the most common use-case and essent
 }
 ```
 
-As I mentioned, this webhook would be fired if the subscription was added, updated, or cancelled, so we couldn't assume that just because the webhook fired this was a brand-new user. Obviously there's no Auth0 ID there, so we used the ```billing.email``` to see if there already was a user for this account, or if we needed to create a new one.
+As the webhook is fired when subscriptions are added, updated, and cancelled, we can't assume that these events always reference brand-new users. Obviously there's no Auth0 ID there, so we used the `billing.email` to see if there already was a user for this account, or if we needed to create a new one.
 
 ### How we used the Search API
 
@@ -242,7 +250,7 @@ Notice that we often had issues with the search API, so instead of just relying 
 
 ### Making the Switch to the Users-By-Email API
 
-The search API had issues, and one of the problems we experienced was not being able to add new subscribers, or modify subscribers, when the Search API was down. We had users subscribing while the Search API was down, and we were getting angry calls from our customers wondering why they couldn't log in yet. Worst of all, before we double-checked in DynamoDB, we ended up with *duplicate accounts*, and sometimes sent our customers multiple welcome emails.
+The Search API had issues, and one of the problems we experienced was not being able to add new subscribers, or modify subscribers, when the Search API was down. We had users subscribing while the Search API was down, and we were getting angry calls from our customers wondering why they couldn't log in yet. Worst of all, before we double-checked in DynamoDB, we ended up with *duplicate accounts*, and sometimes sent our customers multiple welcome emails.
 
 Each user we create has an Export Quota. Giving users multiple accounts wasn't only confusing, it also could end up with them abusing the system, giving them twice (or more) the amount of exports they should have had.
 
@@ -272,20 +280,18 @@ Before this API, we were contemplating a way to migrate off of Auth0 entirely. N
 
 ## Conclusion
 
-Auth0's Search API uses ElasticSearch. Anyone who's ever dealt with ElasticSearch knows how complicated it can be to get it right. What makes Auth0's situation even more complex is that they're using it to host *customers* data, which can be any random format, not something that adhears to a strict format. Auth0 knows this, and they've come up with a good solution for 90% of the use-cases for search.
+Auth0's Search API uses ElasticSearch. Anyone who's ever dealt with ElasticSearch knows how complicated it can be to get it right. What makes Auth0's situation even more complex is that they're using it to host *customers* data, which can be any random format, not something that adheres to a strict format. Auth0 knows this, and they've come up with a good solution for 90% of the use-cases for search.
 
 The only other place at Cannabiz we use search is on the management console, to lookup users accounts when they have a complaint. It's not a mission-critical use-case, so if there's temporary issues in the search API, it no longer will mean we can't create new users, or link user accounts by email addresses. We had already added work-around logic to prevent a search API outage from blocking all user authentication, but now we can also rest assured that it won't impact *anything mission critical*.
 
 
-### Email Search is more limitted, but fits the general use case
+### Email Lookup is more limitted, but fits the general use case
 
-Email Searching doesn't solve all of the problems. Auth0 will still need to work on making the Search API more resiliant and reliable for developers, but it's no longer a critical issue. The issue identified fits our use case, and probably will fit yours too. It might take a little bit more work to get into your workflow, but it's well worth it to ensure users have a good experience.
+The Email Lookup API doesn't solve all of the problems. Auth0 will still need to work on making the Search API more resiliant and reliable for developers, but it's no longer a critical issue. The issue identified fits our use case, and probably will fit yours too. It might take a little bit more work to get into your workflow, but it's well worth it to ensure users have a good experience.
 
-For new developers just starting out, the new API is actually simpler. Instead of having to craft a special query, you just hit an endpoint.
+For developers just starting out, the new API is actually simpler. Instead of having to craft a special query, you just hit an endpoint.
 
 
 ### There are more use-cases than just the Account-linking rule
 
-As you can see from our use-case, looking up a user by email is useful to a lot more applications then just an Auth0 rule to merge accounts. In fact, we're currently using it to help us with account creation, and we're using it to link users from Auth0 to our Analytics platform. The new API should also be significantly less resource-intensive for Auth0, and with fewer people using the Search API for these frequent request, hopefully even the Search API will have fewer requests, which should make it less stressed and more reliable in the long run.
-
-Yes, search still needs to be fixed, but this API should reduce the impact search has on your workflow.
+As you can see from our use-case, looking up a user by email is useful to a lot more applications then just an Auth0 rule to merge accounts. In fact, we're currently using it to help us with account creation, and we're using it to link users from Auth0 to our analytics platform. The new API should also be significantly less resource-intensive for Auth0, and with fewer people using the Search API for these frequent requests, hopefully even the Search API will have fewer requests, which should make it less stressed and more reliable in the long run.
