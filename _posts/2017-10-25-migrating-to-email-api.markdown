@@ -50,7 +50,7 @@ The current Search API, while giving a lot of flexibility to developers, isn't i
 
 ### Use-cases for mapping by email
 
-Auth0 allows you to have multiple identity providers (authentication mechanisms) for the same account. For example, you could set up an external database connection alongside Google social login and merge profiles by their email addresses. Like that, no which login mechanism users choose, they'll be connected to the same account.
+Auth0 allows you to have multiple identity providers (authentication mechanisms) for the same account. For example, you could set up an external database connection alongside Google social login and merge profiles by their email addresses. With that, no matter which login mechanism users chose, they'll be connected to the same account.
 
 In fact, the recommended rule to [Link accounts by email address](https://github.com/auth0/rules/blob/master/rules/link-users-by-email.md) previously used the Search API to do this.
 
